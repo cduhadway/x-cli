@@ -1,0 +1,22 @@
+[project]
+name = "x-cli"
+version = "0.1.0"
+description = "Read-only Twitter/X CLI using Playwright"
+readme = "README.md"
+authors = [
+    { name = "cduhadway", email = "duhadway@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "playwright>=1.49",
+    "click>=8.1",
+    "rich>=13.0",
+    "pydantic>=2.0",
+]
+
+[project.scripts]
+x = "x_cli.cli:cli"
+
+[build-system]
+requires = ["uv_build>=0.10.4,<0.11.0"]
+build-backend = "uv_build"
