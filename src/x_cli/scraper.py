@@ -43,6 +43,7 @@ def _raw_to_tweet(raw: dict) -> Tweet:
         quoted_text=raw.get("quoted_text", ""),
         quoted_user=raw.get("quoted_user", ""),
         quoted_url=raw.get("quoted_url", ""),
+        truncated=raw.get("truncated", False),
     )
 
 
@@ -81,6 +82,37 @@ def _scroll_and_collect(
         time.sleep(SCROLL_PAUSE)
 
     return all_tweets[:max_count], scroll_num + 1
+
+
+def _follow_truncated(page: Page, tweets: list[Tweet]) -> None:
+    """Navigate to individual tweet pages for truncated tweets to get full text and links."""
+    for tweet in tweets:
+        if not tweet.truncated or not tweet.tweet_url:
+            continue
+        try:
+            page.goto(tweet.tweet_url, wait_until="domcontentloaded", timeout=NAV_TIMEOUT)
+            page.wait_for_selector('article[data-testid="tweet"]', timeout=SELECTOR_TIMEOUT)
+            time.sleep(INITIAL_LOAD_PAUSE)
+            data = page.evaluate(EXTRACT_SINGLE_TWEET_LINKS_JS)
+            # Update text with full version from individual page
+            if data.get("text"):
+                tweet.text = data["text"]
+            # Merge newly found links (dedup by href)
+            existing_hrefs = {lnk.href for lnk in tweet.links}
+            for lnk in data.get("links", []):
+                if lnk["href"] in existing_hrefs:
+                    continue
+                resolved_url, domain, category = resolve_link(lnk["href"], lnk.get("text", ""))
+                tweet.links.append(Link(
+                    href=lnk["href"],
+                    text=lnk.get("text", ""),
+                    resolved_url=resolved_url,
+                    domain=domain,
+                    category=category,
+                ))
+            tweet.truncated = False
+        except Exception:
+            continue
 
 
 def _follow_quotes(page: Page, tweets: list[Tweet]) -> None:
@@ -157,6 +189,7 @@ def scrape_bookmarks(
 
     tweets, scrolls = _scroll_and_collect(page, max_count=count, max_scrolls=max_scrolls)
 
+    _follow_truncated(page, tweets)
     if follow_quotes:
         _follow_quotes(page, tweets)
     if follow_threads:
@@ -186,6 +219,7 @@ def scrape_search(
 
     tweets, _ = _scroll_and_collect(page, max_count=count, max_scrolls=max_scrolls)
 
+    _follow_truncated(page, tweets)
     if follow_quotes:
         _follow_quotes(page, tweets)
     if follow_threads:

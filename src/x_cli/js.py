@@ -35,6 +35,8 @@ EXTRACT_TWEETS_JS = """() => {
             const timeEl = article.querySelector('time');
             const userEl = article.querySelector('[data-testid="User-Name"]');
             const permalink = article.querySelector('a[href*="/status/"]');
+            // Detect "Show more" truncation — Twitter hides links in collapsed long tweets
+            const showMore = article.querySelector('[data-testid="tweet-text-show-more-link"]');
             tweets.push({
                 text: text.substring(0, 2000),
                 links,
@@ -45,6 +47,7 @@ EXTRACT_TWEETS_JS = """() => {
                 user_name: userEl ? userEl.innerText.split('\\n')[0] : '',
                 user_handle: userEl ? (userEl.innerText.match(/@\\w+/) || [''])[0] : '',
                 tweet_url: permalink ? permalink.href : '',
+                truncated: !!showMore,
             });
         } catch (e) {}
     }

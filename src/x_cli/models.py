@@ -24,6 +24,7 @@ class Tweet(BaseModel):
     quoted_links: list[Link] = []
     thread_links: list[Link] = []
     thread_text: str = ""
+    truncated: bool = False
 
 
 class BookmarksResult(BaseModel):
